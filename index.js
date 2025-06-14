@@ -23,7 +23,7 @@ const server = http.createServer(app);
 // CORS configuration for production and development
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, 'https://your-vercel-app.vercel.app']
+    ? [process.env.FRONTEND_URL, 'https://livestream-prototype-55z51dsmf-y-juices-projects.vercel.app']
     : ['http://localhost:5173', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'OPTIONS'],
   credentials: true,
