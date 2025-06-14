@@ -23,19 +23,24 @@ const server = http.createServer(app);
 // CORS configuration for production and development
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, 'https://livestream-prototype-55z51dsmf-y-juices-projects.vercel.app']
+    ? [process.env.FRONTEND_URL, 'https://livestream-prototype-55z51dsmf-y-juices-projects.vercel.app', 'https://livestream-app-phi.vercel.app']
     : ['http://localhost:5173', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 };
 
 const io = new Server(server, {
-  cors: corsOptions
+  cors: corsOptions,
+  transports: ['websocket', 'polling']
 });
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/livestream-app')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/livestream-app', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -57,8 +62,16 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error('Error:', err);
+  res.status(err.status || 500).json({ 
+    error: err.message || 'Something went wrong!',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
+// Add a catch-all route for undefined routes
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
 
 // Authentication routes
