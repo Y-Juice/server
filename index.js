@@ -74,11 +74,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Add a catch-all route for undefined routes
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
 // Authentication routes
 app.post('/api/register', async (req, res) => {
   try {
@@ -1344,6 +1339,11 @@ io.on('connection', (socket) => {
 // Serve the frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+// Add a catch-all route for undefined routes at the very end
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
 
 const PORT = process.env.PORT || 3001;
