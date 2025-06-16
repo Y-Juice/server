@@ -60,6 +60,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dist')));
 
+// Root route handler
+app.get('/', (req, res) => {
+  res.json({ message: 'Livestream API is running' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
