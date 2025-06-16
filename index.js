@@ -65,15 +65,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'Livestream API is running' });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Something went wrong!',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
-});
-
+// API Routes
 // Authentication routes
 app.post('/api/register', async (req, res) => {
   try {
@@ -172,14 +164,61 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Protected route example
+// Protected routes
 app.get('/api/profile', auth, async (req, res) => {
-  res.json({ 
-    user: { 
-      email: req.user.email, 
-      username: req.user.username 
-    } 
-  });
+  try {
+    res.json({ 
+      user: { 
+        email: req.user.email, 
+        username: req.user.username 
+      } 
+    });
+  } catch (error) {
+    console.error('Profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Video routes
+app.get('/api/videos', async (req, res) => {
+  try {
+    const videos = await Video.find().sort({ createdAt: -1 });
+    res.json(videos);
+  } catch (error) {
+    console.error('Error fetching videos:', error);
+    res.status(500).json({ error: 'Failed to fetch videos' });
+  }
+});
+
+app.get('/api/videos/:id', async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    res.json(video);
+  } catch (error) {
+    console.error('Error fetching video:', error);
+    res.status(500).json({ error: 'Failed to fetch video' });
+  }
+});
+
+app.post('/api/videos', auth, async (req, res) => {
+  try {
+    const { title, description, url, category } = req.body;
+    const video = new Video({
+      title,
+      description,
+      url,
+      category,
+      userId: req.user._id
+    });
+    await video.save();
+    res.status(201).json(video);
+  } catch (error) {
+    console.error('Error creating video:', error);
+    res.status(400).json({ error: 'Failed to create video' });
+  }
 });
 
 // Religious Citation Search API routes
@@ -257,78 +296,6 @@ app.get('/api/search/bible', async (req, res) => {
   } catch (error) {
     console.error('Error searching Bible:', error);
     res.status(500).json({ error: 'Failed to search Bible' });
-  }
-});
-
-// Video routes
-app.get('/api/videos', async (req, res) => {
-  try {
-    const { category } = req.query;
-    
-    // Build query
-    const query = {};
-    if (category) {
-      query.category = category;
-    }
-    
-    const videos = await Video.find(query)
-      .sort({ _id: -1 }) // Sort by newest first (using _id since it contains timestamp)
-      .limit(50); // Limit to 50 videos
-    
-    res.json(videos);
-  } catch (error) {
-    console.error('Error fetching videos:', error);
-    res.status(500).json({ error: 'Failed to fetch videos' });
-  }
-});
-
-// Get single video by ID
-app.get('/api/videos/:id', async (req, res) => {
-  try {
-    const video = await Video.findById(req.params.id);
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-    res.json(video);
-  } catch (error) {
-    console.error('Error fetching video by ID:', error);
-    res.status(500).json({ error: 'Failed to fetch video' });
-  }
-});
-
-app.post('/api/videos', auth, async (req, res) => {
-  try {
-    const { category, channel_name, title, url } = req.body;
-
-    // Validate required fields
-    if (!category || !channel_name || !title || !url) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
-    // Validate YouTube URL format
-    if (!url.includes('youtube.com/watch?v=')) {
-      return res.status(400).json({ error: 'Invalid YouTube URL format' });
-    }
-
-    // Check if video already exists
-    const existingVideo = await Video.findOne({ url });
-    if (existingVideo) {
-      return res.status(400).json({ error: 'Video already exists' });
-    }
-
-    // Create new video
-    const video = new Video({
-      category,
-      channel_name,
-      title,
-      url
-    });
-
-    await video.save();
-    res.status(201).json(video);
-  } catch (error) {
-    console.error('Error adding video:', error);
-    res.status(500).json({ error: 'Failed to add video' });
   }
 });
 
@@ -1341,7 +1308,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-// Add a catch-all route for undefined routes at the very end
+// Catch-all route for undefined routes
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
